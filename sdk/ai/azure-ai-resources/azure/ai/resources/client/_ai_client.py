@@ -6,6 +6,7 @@ import json
 import logging
 import os
 import tempfile
+import warnings
 from typing import Any, Optional, Union
 
 import yaml
@@ -89,7 +90,17 @@ class AIClient:
         )
 
         if project_name:
-            ai_resource_name = ai_resource_name or self._ml_client.workspaces.get(project_name).workspace_hub.split("/")[-1]
+            project = self._ml_client.workspaces.get(project_name)
+            
+            print(project)
+
+            if project.kind == "project":
+                ai_resource_name = project.workspace_hub.split("/")[-1]
+            elif project.kind == "hub":
+                ai_resource_name = ai_resource_name or project_name
+                self._scope.project_name = None
+            else:
+                warnings.warn(f"AIClient only works with workspace kind of \"project\" or \"hub\", workspace {project_name} is with kind: {project.kind}.")
 
         # Client scoped to the AI Resource for operations that need AI resource-scoping
         # instead of project scoping.
@@ -182,15 +193,6 @@ class AIClient:
         :rtype: MLIndexOperations
         """
         return self._mlindexes
-
-    @property
-    def pf(self) -> PFOperations:
-        """A collection of PF operation-related operations.
-
-        :return: PF Operation operations
-        :rtype: PFOperations
-        """
-        return self._pf
 
     @property
     def data(self) -> DataOperations:
